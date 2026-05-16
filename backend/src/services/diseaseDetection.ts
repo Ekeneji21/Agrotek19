@@ -11,13 +11,16 @@ export interface DetectionResult {
   source: 'gemini' | 'demo';
 }
 
-const PROMPT = `You are an expert agricultural plant pathologist specializing in African and Zimbabwean crops.
+const PLANT_CHECK_PROMPT = `Look at this image carefully. Does it show a plant, crop, or any plant part (leaf, stem, root, fruit, flower)?
 
-FIRST — decide if this image shows a crop, plant, or plant part (leaf, stem, fruit, root).
-If it does NOT show a plant or crop, respond with exactly:
-{"notPlant": true}
+Answer with a single word only: YES or NO.
 
-If it IS a plant/crop, respond with ONLY this JSON — no markdown, no explanation:
+Answer NO if the image shows: people, animals, objects, buildings, vehicles, code, text, screenshots, soil without plants, or anything that is not a plant.`;
+
+const DIAGNOSIS_PROMPT = `You are an expert agricultural plant pathologist specializing in African and Zimbabwean crops.
+
+Analyze this crop image and respond with ONLY a valid JSON object — no markdown, no explanation, just the JSON.
+
 {
   "crop": "common crop name (e.g. Maize, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut)",
   "isHealthy": true or false,
@@ -28,11 +31,9 @@ If it IS a plant/crop, respond with ONLY this JSON — no markdown, no explanati
 }
 
 Rules:
-- Only analyse actual plant/crop tissue — reject animals, people, objects, soil only, etc.
 - If the plant is healthy, set isHealthy=true, disease='None — Healthy', severity='Low'
 - severity: Low=early/minor, Medium=moderate spread, High=severe/widespread
-- treatment must be practical for a Zimbabwean smallholder farmer
-- If the image is too blurry or dark to assess, respond with {"notPlant": true}`;
+- treatment must be practical for a Zimbabwean smallholder farmer`;
 
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
@@ -44,12 +45,18 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const ext = imagePath.split('.').pop()?.toLowerCase() ?? 'jpeg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
-  const result = await model.generateContent([
-    PROMPT,
-    { inlineData: { data: base64, mimeType } },
-  ]);
+  const inlineImage = { inlineData: { data: base64, mimeType } };
 
-  const text = result.response.text().trim();
+  // Step 1: verify it's actually a plant
+  const checkResult = await model.generateContent([PLANT_CHECK_PROMPT, inlineImage]);
+  const checkText = checkResult.response.text().trim().toUpperCase();
+  if (!checkText.startsWith('YES')) {
+    throw new Error('Image does not appear to show a crop or plant. Please upload a clear photo of a plant leaf, stem, or fruit.');
+  }
+
+  // Step 2: diagnose the disease
+  const diagResult = await model.generateContent([DIAGNOSIS_PROMPT, inlineImage]);
+  const text = diagResult.response.text().trim();
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   let parsed: any;
@@ -57,10 +64,6 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
     parsed = JSON.parse(jsonText);
   } catch {
     throw new Error(`Gemini returned non-JSON response: ${text.slice(0, 200)}`);
-  }
-
-  if (parsed.notPlant) {
-    throw new Error('Image does not appear to show a crop or plant. Please upload a clear photo of a plant leaf, stem, or fruit.');
   }
 
   const severity: DetectionResult['severity'] =
