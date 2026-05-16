@@ -8,40 +8,25 @@ export interface DetectionResult {
   severity: 'Low' | 'Medium' | 'High';
   treatment: string;
   isHealthy: boolean;
+  source: 'plant.id' | 'demo';
 }
 
-// ─── PLANT.ID INTEGRATION ──────────────────────────────────────────────────
-// Get your API key at https://plant.id
-// Add PLANT_ID_API_KEY=your_key to backend/.env
-// The app automatically switches from the fallback to real AI when the key is present.
-
-async function detectWithPlantId(imagePath: string): Promise<DetectionResult> {
-  const apiKey = process.env.PLANT_ID_API_KEY!;
-  const imageData = fs.readFileSync(imagePath).toString('base64');
-
-  const body = {
-    images: [imageData],
-    health: 'all',
-    similar_images: false,
-  };
-
+// ─── PLANT.ID v3 ────────────────────────────────────────────────────────────
+async function detectV3(imageBase64: string, apiKey: string): Promise<DetectionResult> {
   const resp = await fetch('https://plant.id/api/v3/health_assessment', {
     method: 'POST',
-    headers: {
-      'Api-Key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ images: [imageBase64], health: 'all', similar_images: false }),
   });
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Plant.id API error ${resp.status}: ${err}`);
-  }
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(text);
 
-  const data = await resp.json() as any;
+  const data = JSON.parse(text) as any;
+  return parseV3Response(data);
+}
 
-  // Parse Plant.id v3 health_assessment response
+function parseV3Response(data: any): DetectionResult {
   const result = data.result;
   const isHealthy = result?.is_healthy?.binary === true;
   const plantName = result?.classification?.suggestions?.[0]?.name ?? 'Unknown Plant';
@@ -54,14 +39,13 @@ async function detectWithPlantId(imagePath: string): Promise<DetectionResult> {
       severity: 'Low',
       treatment: 'Your crop appears healthy. Continue regular monitoring and good agronomic practices.',
       isHealthy: true,
+      source: 'plant.id',
     };
   }
 
   const topDisease = result?.disease?.suggestions?.[0];
   const diseaseName = topDisease?.name ?? 'Unidentified Disease';
   const confidence = Math.round((topDisease?.probability ?? 0.5) * 100);
-
-  const treatment = buildTreatment(diseaseName, plantName);
   const severity = confidence > 80 ? 'High' : confidence > 50 ? 'Medium' : 'Low';
 
   return {
@@ -69,15 +53,86 @@ async function detectWithPlantId(imagePath: string): Promise<DetectionResult> {
     disease: diseaseName,
     confidence,
     severity: severity as DetectionResult['severity'],
-    treatment,
+    treatment: buildTreatment(diseaseName, plantName),
     isHealthy: false,
+    source: 'plant.id',
   };
 }
 
-// ─── FALLBACK (when no API key is set) ─────────────────────────────────────
-// Uses file characteristics as a demonstration stand-in.
-// NOT suitable for real diagnosis — only for UI testing.
+// ─── PLANT.ID v2 (fallback if v3 host restriction fires) ───────────────────
+async function detectV2(imageBase64: string, apiKey: string): Promise<DetectionResult> {
+  const resp = await fetch('https://api.plant.id/v2/health_assessment', {
+    method: 'POST',
+    headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      images: [`data:image/jpeg;base64,${imageBase64}`],
+      modifiers: ['health_all'],
+      plant_language: 'en',
+      plant_details: ['common_names', 'name_authority'],
+    }),
+  });
 
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(text);
+
+  const data = JSON.parse(text) as any;
+  return parseV2Response(data);
+}
+
+function parseV2Response(data: any): DetectionResult {
+  const health = data.health_assessment;
+  const plantName = data.suggestions?.[0]?.plant_name ?? 'Unknown Plant';
+  const isHealthy = health?.is_healthy === true;
+
+  if (isHealthy) {
+    return {
+      crop: plantName,
+      disease: 'None — Healthy',
+      confidence: Math.round((health?.is_healthy_probability ?? 0.9) * 100),
+      severity: 'Low',
+      treatment: 'Your crop appears healthy. Continue regular monitoring and good agronomic practices.',
+      isHealthy: true,
+      source: 'plant.id',
+    };
+  }
+
+  const topDisease = health?.diseases?.[0];
+  const diseaseName = topDisease?.name ?? 'Unidentified Disease';
+  const confidence = Math.round((topDisease?.probability ?? 0.5) * 100);
+  const severity = confidence > 80 ? 'High' : confidence > 50 ? 'Medium' : 'Low';
+
+  return {
+    crop: plantName,
+    disease: diseaseName,
+    confidence,
+    severity: severity as DetectionResult['severity'],
+    treatment: buildTreatment(diseaseName, plantName),
+    isHealthy: false,
+    source: 'plant.id',
+  };
+}
+
+// ─── TREATMENT BUILDER ──────────────────────────────────────────────────────
+function buildTreatment(disease: string, crop: string): string {
+  const d = disease.toLowerCase();
+  if (d.includes('blight'))
+    return `For ${disease} on ${crop}: Apply mancozeb or chlorothalonil fungicide every 7–10 days. Remove infected leaves. Ensure good air circulation and avoid overhead irrigation.`;
+  if (d.includes('rust'))
+    return `For ${disease} on ${crop}: Apply propiconazole or tebuconazole systemic fungicide. Monitor regularly from early season. Plant resistant varieties where available.`;
+  if (d.includes('wilt'))
+    return `For ${disease} on ${crop}: No chemical cure — remove and destroy infected plants to prevent spread. Improve drainage. Use resistant varieties next season.`;
+  if (d.includes('mildew'))
+    return `For ${disease} on ${crop}: Apply sulphur-based or systemic fungicide (myclobutanil). Improve air circulation. Avoid excess nitrogen fertilizer.`;
+  if (d.includes('spot'))
+    return `For ${disease} on ${crop}: Apply copper-based or mancozeb fungicide. Remove affected leaves. Rotate crops and avoid working in wet fields.`;
+  if (d.includes('armyworm') || d.includes('worm') || d.includes('pest') || d.includes('insect'))
+    return `For ${disease} on ${crop}: Apply emamectin benzoate or chlorpyrifos insecticide. Scout fields early morning. Use pheromone traps for monitoring.`;
+  if (d.includes('mosaic') || d.includes('virus'))
+    return `For ${disease} on ${crop}: No cure once infected — remove and destroy infected plants immediately. Control insect vectors with imidacloprid. Use certified disease-free seed.`;
+  return `For ${disease} on ${crop}: Consult your local agronomist for specific treatment. Remove severely infected material, monitor spread, and consider broad-spectrum fungicide as a precaution.`;
+}
+
+// ─── DEMO FALLBACK ──────────────────────────────────────────────────────────
 const DISEASE_KB: Record<string, { disease: string; severity: DetectionResult['severity']; treatment: string }[]> = {
   Maize: [
     { disease: 'Grey Leaf Spot', severity: 'Medium', treatment: 'Apply azoxystrobin or propiconazole fungicide at first sign. Ensure good air circulation, practice crop rotation, and plant resistant varieties next season.' },
@@ -109,33 +164,40 @@ const DISEASE_KB: Record<string, { disease: string; severity: DetectionResult['s
 const CROPS = Object.keys(DISEASE_KB);
 
 function fallbackDetect(fileSizeBytes: number): DetectionResult {
-  const cropIdx = fileSizeBytes % CROPS.length;
-  const crop = CROPS[cropIdx];
+  const crop = CROPS[fileSizeBytes % CROPS.length];
   const diseases = DISEASE_KB[crop];
-  const diseaseIdx = Math.floor(fileSizeBytes / 1024) % diseases.length;
-  const result = diseases[diseaseIdx];
-  const confidence = 82 + (fileSizeBytes % 17);
-  return { crop, confidence, isHealthy: false, ...result };
-}
-
-// ─── GENERIC TREATMENT BUILDER (used with Plant.id results) ────────────────
-function buildTreatment(disease: string, crop: string): string {
-  const d = disease.toLowerCase();
-  if (d.includes('blight'))  return `For ${disease} on ${crop}: Apply mancozeb or chlorothalonil fungicide every 7–10 days. Remove infected leaves. Ensure good air circulation and avoid overhead irrigation.`;
-  if (d.includes('rust'))    return `For ${disease} on ${crop}: Apply propiconazole or tebuconazole systemic fungicide. Monitor regularly from early season. Plant resistant varieties where available.`;
-  if (d.includes('wilt'))    return `For ${disease} on ${crop}: No chemical cure — remove and destroy infected plants to prevent spread. Improve drainage. Use resistant varieties next season.`;
-  if (d.includes('mildew'))  return `For ${disease} on ${crop}: Apply sulphur-based or systemic fungicide (myclobutanil). Improve air circulation. Avoid excess nitrogen fertilizer.`;
-  if (d.includes('spot'))    return `For ${disease} on ${crop}: Apply copper-based or mancozeb fungicide. Remove affected leaves. Rotate crops and avoid working in wet fields.`;
-  if (d.includes('armyworm') || d.includes('pest') || d.includes('worm')) return `For ${disease} on ${crop}: Apply appropriate insecticide (emamectin benzoate or chlorpyrifos). Scout fields early morning. Use pheromone traps for monitoring.`;
-  return `For ${disease} on ${crop}: Consult your local agronomist for specific treatment recommendations. Remove severely infected plant material and monitor the spread.`;
+  const result = diseases[Math.floor(fileSizeBytes / 1024) % diseases.length];
+  return { crop, confidence: 82 + (fileSizeBytes % 17), isHealthy: false, source: 'demo', ...result };
 }
 
 // ─── MAIN EXPORT ────────────────────────────────────────────────────────────
 export async function detectDisease(imagePath: string, fileSizeBytes: number): Promise<DetectionResult> {
-  if (process.env.PLANT_ID_API_KEY) {
-    return detectWithPlantId(imagePath);
+  const apiKey = process.env.PLANT_ID_API_KEY;
+
+  if (!apiKey) {
+    console.warn('[Disease] No PLANT_ID_API_KEY — running in demo mode. Not for real use.');
+    return fallbackDetect(fileSizeBytes);
   }
-  // No API key — use fallback (for development/demo only)
-  console.warn('[Disease Detection] PLANT_ID_API_KEY not set — using demo fallback. Not suitable for real diagnoses.');
-  return fallbackDetect(fileSizeBytes);
+
+  const imageBase64 = fs.readFileSync(imagePath).toString('base64');
+
+  // Try v3 first, fall back to v2 automatically
+  try {
+    console.log('[Disease] Running Plant.id v3 health assessment…');
+    return await detectV3(imageBase64, apiKey);
+  } catch (errV3: any) {
+    if (errV3.message?.includes('Host not in allowlist')) {
+      console.warn('[Disease] Plant.id v3 host restriction hit — trying v2 endpoint…');
+      console.warn('[Disease] To fix permanently: plant.id → My Account → API Keys → clear "Allowed hosts"');
+    } else {
+      console.warn(`[Disease] v3 failed (${errV3.message}) — trying v2…`);
+    }
+
+    try {
+      return await detectV2(imageBase64, apiKey);
+    } catch (errV2: any) {
+      console.error(`[Disease] Both v3 and v2 failed. v2 error: ${errV2.message}`);
+      throw new Error(`Plant.id detection failed: ${errV3.message}. Fix: go to plant.id → My Account → API Keys → remove host restrictions.`);
+    }
+  }
 }
