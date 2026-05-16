@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 
 export interface DetectionResult {
@@ -30,20 +30,24 @@ Respond with ONLY this JSON — no markdown, no explanation:
 
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+  const ai = new GoogleGenAI({ apiKey });
 
   const imageData = fs.readFileSync(imagePath);
   const base64 = imageData.toString('base64');
   const ext = imagePath.split('.').pop()?.toLowerCase() ?? 'jpeg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
-  const result = await model.generateContent([
-    PROMPT,
-    { inlineData: { data: base64, mimeType } },
-  ]);
+  const result = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [
+      { role: 'user', parts: [
+        { text: PROMPT },
+        { inlineData: { data: base64, mimeType } },
+      ]},
+    ],
+  });
 
-  const text = result.response.text().trim();
+  const text = (result.text ?? '').trim();
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   let parsed: any;
@@ -108,7 +112,7 @@ function fallbackDetect(fileSizeBytes: number): DetectionResult {
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export async function detectDisease(imagePath: string, fileSizeBytes: number): Promise<DetectionResult> {
   if (process.env.GEMINI_API_KEY) {
-    console.log('[Disease] Using Gemini 1.5 Flash vision model…');
+    console.log('[Disease] Using Gemini 2.0 Flash vision model…');
     return detectWithGemini(imagePath);
   }
 
