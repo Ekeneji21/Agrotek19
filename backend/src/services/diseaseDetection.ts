@@ -13,9 +13,11 @@ export interface DetectionResult {
 
 const PROMPT = `You are an expert agricultural plant pathologist specializing in African and Zimbabwean crops.
 
-Analyze this crop image and respond with ONLY a valid JSON object — no markdown, no explanation, just the JSON.
+FIRST — decide if this image shows a crop, plant, or plant part (leaf, stem, fruit, root).
+If it does NOT show a plant or crop, respond with exactly:
+{"notPlant": true}
 
-Required format:
+If it IS a plant/crop, respond with ONLY this JSON — no markdown, no explanation:
 {
   "crop": "common crop name (e.g. Maize, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut)",
   "isHealthy": true or false,
@@ -26,10 +28,11 @@ Required format:
 }
 
 Rules:
+- Only analyse actual plant/crop tissue — reject animals, people, objects, soil only, etc.
 - If the plant is healthy, set isHealthy=true, disease='None — Healthy', severity='Low'
-- severity should reflect actual disease spread: Low=early/minor, Medium=moderate, High=severe/widespread
+- severity: Low=early/minor, Medium=moderate spread, High=severe/widespread
 - treatment must be practical for a Zimbabwean smallholder farmer
-- If image is unclear or not a plant, use crop='Unknown', isHealthy=false, disease='Unable to identify', confidence=0`;
+- If the image is too blurry or dark to assess, respond with {"notPlant": true}`;
 
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
@@ -54,6 +57,10 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
     parsed = JSON.parse(jsonText);
   } catch {
     throw new Error(`Gemini returned non-JSON response: ${text.slice(0, 200)}`);
+  }
+
+  if (parsed.notPlant) {
+    throw new Error('Image does not appear to show a crop or plant. Please upload a clear photo of a plant leaf, stem, or fruit.');
   }
 
   const severity: DetectionResult['severity'] =

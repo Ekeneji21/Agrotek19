@@ -19,6 +19,7 @@ export function DiseaseDetection() {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -52,18 +53,19 @@ export function DiseaseDetection() {
     if (!file) return;
     setScanning(true);
     setResult(null);
+    setError(null);
     try {
       const res = await diseaseApi.scanImage(file);
       setResult(res.data as ScanResult);
       setHistory(prev => [res.data as ScanResult, ...prev].slice(0, 20));
     } catch (err: any) {
-      alert(err.message || 'Scan failed. Please try again.');
+      setError(err.message || 'Scan failed. Please try again.');
     } finally {
       setScanning(false);
     }
   };
 
-  const clearImage = () => { setImage(null); setFile(null); setResult(null); };
+  const clearImage = () => { setImage(null); setFile(null); setResult(null); setError(null); };
   const severityColor = (s: string) => s === 'High' ? 'badge-red' : s === 'Medium' ? 'badge-orange' : 'badge-green';
 
   return (
@@ -124,7 +126,15 @@ export function DiseaseDetection() {
         <div className="col-span-7 card animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <h2 className="card-title mb-4">Diagnosis Results</h2>
 
-          {!result && !scanning && (
+          {error && !scanning && (
+            <div className="empty-state" style={{ color: 'var(--danger-color)' }}>
+              <AlertTriangle size={48} />
+              <h3 style={{ color: 'var(--danger-color)' }}>Scan Failed</h3>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {!result && !scanning && !error && (
             <div className="empty-state">
               <Bug size={48} />
               <h3>No Scan Results Yet</h3>
