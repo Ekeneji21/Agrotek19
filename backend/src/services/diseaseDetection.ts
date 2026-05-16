@@ -17,23 +17,27 @@ Answer with a single word only: YES or NO.
 
 Answer NO if the image shows: people, animals, objects, buildings, vehicles, code, text, screenshots, soil without plants, or anything that is not a plant.`;
 
-const DIAGNOSIS_PROMPT = `You are an expert agricultural plant pathologist specializing in African and Zimbabwean crops.
+const DIAGNOSIS_PROMPT = `You are an expert agricultural plant pathologist. Analyze this image carefully.
 
-Analyze this crop image and respond with ONLY a valid JSON object — no markdown, no explanation, just the JSON.
+STEP 1 — Identify the exact crop species by its visual characteristics (leaf shape, texture, color, stem, fruit). Do NOT default to Maize. Common crops include: Maize, Tobacco, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut, Potato, Pepper, Cabbage, Onion, Sugarcane, Sunflower, Cassava, Sweet Potato, Banana, Mango, Citrus, Coffee, Tea, Bean, Cowpea, Pea — identify whichever matches the image.
+
+STEP 2 — Assess disease symptoms on the identified crop.
+
+Respond with ONLY a valid JSON object — no markdown, no explanation:
 
 {
-  "crop": "common crop name (e.g. Maize, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut)",
+  "crop": "the actual crop species visible in the image",
   "isHealthy": true or false,
   "disease": "exact disease name, or 'None — Healthy' if healthy",
   "confidence": integer 0-100,
   "severity": "Low" or "Medium" or "High",
-  "treatment": "2-3 specific, actionable treatment sentences including chemical names where applicable"
+  "treatment": "2-3 specific actionable treatment sentences with chemical names where applicable"
 }
 
 Rules:
+- crop must match what is visually in the image — never assume or default
 - If the plant is healthy, set isHealthy=true, disease='None — Healthy', severity='Low'
-- severity: Low=early/minor, Medium=moderate spread, High=severe/widespread
-- treatment must be practical for a Zimbabwean smallholder farmer`;
+- severity: Low=early/minor, Medium=moderate spread, High=severe/widespread`;
 
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
