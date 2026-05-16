@@ -31,7 +31,7 @@ Respond with ONLY this JSON — no markdown, no explanation:
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
   const imageData = fs.readFileSync(imagePath);
   const base64 = imageData.toString('base64');
