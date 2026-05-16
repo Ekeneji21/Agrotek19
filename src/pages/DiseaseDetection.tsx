@@ -1,37 +1,36 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Camera, X, Loader2, AlertTriangle, CheckCircle, Leaf, Bug, Zap } from 'lucide-react';
+import { diseaseApi } from '../services/api';
+
+const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace('/api', '');
 
 interface ScanResult {
+  id: string;
   crop: string;
   disease: string;
   confidence: number;
   severity: string;
   treatment: string;
+  image_path: string;
+  scanned_at: string;
 }
-
-// Simulated AI scan - replace with diseaseApi.scanImage(file) when backend is ready
-const simulateScan = (file: File): Promise<ScanResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const diseases = [
-        { crop: 'Maize', disease: 'Grey Leaf Spot', confidence: 94, severity: 'Medium', treatment: 'Apply fungicide (azoxystrobin) at first sign of symptoms. Rotate crops and use resistant varieties.' },
-        { crop: 'Sorghum', disease: 'Anthracnose', confidence: 87, severity: 'High', treatment: 'Remove infected plant debris. Apply thiophanate-methyl. Plant resistant varieties next season.' },
-        { crop: 'Cotton', disease: 'Bacterial Blight', confidence: 91, severity: 'Low', treatment: 'Use certified disease-free seed. Apply copper-based bactericides. Ensure proper field drainage.' },
-        { crop: 'Tomato', disease: 'Early Blight', confidence: 96, severity: 'High', treatment: 'Apply chlorothalonil or mancozeb fungicide. Mulch around plants to prevent soil splash.' },
-      ];
-      resolve(diseases[Math.floor(Math.random() * diseases.length)]);
-    }, 2500);
-  });
-};
 
 export function DiseaseDetection() {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
-  const [history, setHistory] = useState<(ScanResult & { image: string; date: string })[]>([]);
+  const [history, setHistory] = useState<ScanResult[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    diseaseApi.getHistory()
+      .then(r => setHistory(r.data))
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false));
+  }, []);
 
   const handleFile = useCallback((f: File) => {
     if (!f.type.startsWith('image/')) return;
@@ -54,19 +53,17 @@ export function DiseaseDetection() {
     setScanning(true);
     setResult(null);
     try {
-      // Replace with: const res = await diseaseApi.scanImage(file);
-      const res = await simulateScan(file);
-      setResult(res);
-      setHistory(prev => [{ ...res, image: image!, date: new Date().toLocaleString() }, ...prev].slice(0, 10));
-    } catch {
-      alert('Scan failed. Please try again.');
+      const res = await diseaseApi.scanImage(file);
+      setResult(res.data as ScanResult);
+      setHistory(prev => [res.data as ScanResult, ...prev].slice(0, 20));
+    } catch (err: any) {
+      alert(err.message || 'Scan failed. Please try again.');
     } finally {
       setScanning(false);
     }
   };
 
   const clearImage = () => { setImage(null); setFile(null); setResult(null); };
-
   const severityColor = (s: string) => s === 'High' ? 'badge-red' : s === 'Medium' ? 'badge-orange' : 'badge-green';
 
   return (
@@ -74,15 +71,14 @@ export function DiseaseDetection() {
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ marginBottom: 0 }}>AI Disease Detection</h1>
-          <p className="text-sm text-muted mt-1">Upload or capture a crop image for instant AI-powered diagnosis.</p>
+          <p className="text-sm text-muted mt-1">Upload a crop image for instant AI-powered diagnosis.</p>
         </div>
       </div>
 
       <div className="dashboard-grid">
-        {/* Upload Section */}
+        {/* Upload */}
         <div className="col-span-5 card animate-fade-in">
           <h2 className="card-title mb-4">Scan Your Crop</h2>
-
           {!image ? (
             <>
               <div
@@ -95,10 +91,9 @@ export function DiseaseDetection() {
               >
                 <Upload size={40} />
                 <div className="font-semibold mt-2">Drag & drop your crop image here</div>
-                <div className="text-xs text-muted mt-1">or click to browse • JPG, PNG up to 10MB</div>
+                <div className="text-xs text-muted mt-1">or click to browse · JPG, PNG up to 10MB</div>
               </div>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-
               <div className="flex gap-3 mt-4">
                 <button className="btn btn-primary flex-1" onClick={() => fileRef.current?.click()}>
                   <Upload size={16} /> Upload Image
@@ -116,15 +111,16 @@ export function DiseaseDetection() {
                   <X size={16} />
                 </button>
               </div>
-
               <button className="btn btn-primary btn-lg w-full" onClick={handleScan} disabled={scanning}>
-                {scanning ? <><span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> Analyzing with AI...</> : <><Zap size={18} /> Run AI Diagnosis</>}
+                {scanning
+                  ? <><Loader2 size={18} className="animate-spin" /> Analyzing with AI…</>
+                  : <><Zap size={18} /> Run AI Diagnosis</>}
               </button>
             </div>
           )}
         </div>
 
-        {/* Results Section */}
+        {/* Results */}
         <div className="col-span-7 card animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <h2 className="card-title mb-4">Diagnosis Results</h2>
 
@@ -138,38 +134,34 @@ export function DiseaseDetection() {
 
           {scanning && (
             <div className="empty-state animate-pulse">
-              <span className="spinner" style={{ width: 48, height: 48, borderWidth: 4 }} />
-              <h3 className="mt-4">Analyzing Image...</h3>
-              <p>Our AI model is identifying diseases in your crop image. This usually takes a few seconds.</p>
+              <Loader2 size={48} className="animate-spin" />
+              <h3 className="mt-4">Analyzing Image…</h3>
+              <p>Our AI model is identifying diseases. This usually takes a few seconds.</p>
             </div>
           )}
 
           {result && !scanning && (
             <div className="animate-fade-in">
               <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-                {/* Main Result */}
                 <div className="scan-result-card flex-1" style={{ minWidth: 220, borderLeft: '4px solid var(--primary-green)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle size={20} className="text-primary" />
                     <span className="font-bold text-lg">Detection Complete</span>
                   </div>
-
                   <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted">Crop Identified</span>
-                      <span className="font-semibold">{result.crop}</span>
-                    </div>
-                    <div style={{ height: 1, background: 'var(--border-color)' }} />
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted">Disease Detected</span>
-                      <span className="font-semibold text-danger">{result.disease}</span>
-                    </div>
-                    <div style={{ height: 1, background: 'var(--border-color)' }} />
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted">Confidence</span>
-                      <span className="font-bold text-primary text-lg">{result.confidence}%</span>
-                    </div>
-                    <div style={{ height: 1, background: 'var(--border-color)' }} />
+                    {[
+                      { label: 'Crop Identified', value: result.crop },
+                      { label: 'Disease Detected', value: result.disease, danger: true },
+                      { label: 'Confidence', value: `${result.confidence}%`, bold: true },
+                    ].map(row => (
+                      <React.Fragment key={row.label}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted">{row.label}</span>
+                          <span className={`font-semibold${row.danger ? ' text-danger' : ''}${row.bold ? ' text-primary text-lg' : ''}`}>{row.value}</span>
+                        </div>
+                        <div style={{ height: 1, background: 'var(--border-color)' }} />
+                      </React.Fragment>
+                    ))}
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted">Severity</span>
                       <span className={`badge ${severityColor(result.severity)}`}>
@@ -179,7 +171,6 @@ export function DiseaseDetection() {
                   </div>
                 </div>
 
-                {/* Treatment */}
                 <div className="scan-result-card flex-1" style={{ minWidth: 220, background: 'var(--light-green)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <Leaf size={20} className="text-primary" />
@@ -194,27 +185,33 @@ export function DiseaseDetection() {
         </div>
 
         {/* Scan History */}
-        {history.length > 0 && (
-          <div className="col-span-12 card animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <h2 className="card-title mb-4">Scan History</h2>
+        <div className="col-span-12 card animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <h2 className="card-title mb-4">Scan History</h2>
+          {historyLoading ? (
+            <div className="flex justify-center py-6"><Loader2 size={24} className="animate-spin text-muted" /></div>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-muted text-center py-4">No previous scans. Upload a crop image above to start.</p>
+          ) : (
             <div className="flex gap-3 overflow-hidden" style={{ flexWrap: 'wrap' }}>
-              {history.map((item, i) => (
-                <div key={i} className="scan-result-card flex gap-3 items-center" style={{ flex: '1 1 300px', maxWidth: 400 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-sm)', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={item.image} alt={item.crop} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {history.map((item) => (
+                <div key={item.id} className="scan-result-card flex gap-3 items-center" style={{ flex: '1 1 300px', maxWidth: 420 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-sm)', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-color)' }}>
+                    {item.image_path ? (
+                      <img src={`${BASE_URL}${item.image_path}`} alt={item.crop} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : <Leaf size={24} className="text-muted m-auto mt-3" />}
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-sm">{item.crop} – {item.disease}</span>
                       <span className={`badge ${severityColor(item.severity)}`}>{item.confidence}%</span>
                     </div>
-                    <div className="text-xs text-muted mt-1">{item.date}</div>
+                    <div className="text-xs text-muted mt-1">{new Date(item.scanned_at).toLocaleString()}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
