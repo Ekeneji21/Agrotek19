@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import fs from 'fs';
 
 export interface DetectionResult {
@@ -8,7 +8,7 @@ export interface DetectionResult {
   severity: 'Low' | 'Medium' | 'High';
   treatment: string;
   isHealthy: boolean;
-  source: 'gemini' | 'demo';
+  source: 'groq' | 'demo';
 }
 
 const PROMPT = `You are an expert agricultural plant pathologist.
@@ -28,33 +28,34 @@ Respond with ONLY this JSON — no markdown, no explanation:
   "treatment": "2-3 specific actionable treatment sentences with chemical names where applicable"
 }`;
 
-async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
-  const apiKey = process.env.GEMINI_API_KEY!;
-  const ai = new GoogleGenAI({ apiKey });
+async function detectWithGroq(imagePath: string): Promise<DetectionResult> {
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   const imageData = fs.readFileSync(imagePath);
   const base64 = imageData.toString('base64');
   const ext = imagePath.split('.').pop()?.toLowerCase() ?? 'jpeg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
-  const result = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [
-      { role: 'user', parts: [
-        { text: PROMPT },
-        { inlineData: { data: base64, mimeType } },
-      ]},
-    ],
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.2-11b-vision-preview',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: PROMPT },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+      ],
+    }],
+    temperature: 0.1,
   });
 
-  const text = (result.text ?? '').trim();
+  const text = (response.choices[0]?.message?.content ?? '').trim();
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   let parsed: any;
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    throw new Error(`Gemini returned non-JSON response: ${text.slice(0, 200)}`);
+    throw new Error(`Model returned non-JSON response: ${text.slice(0, 200)}`);
   }
 
   if (parsed.notPlant) {
@@ -71,7 +72,7 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
     severity,
     treatment: String(parsed.treatment ?? 'Consult your local agronomist.'),
     isHealthy: Boolean(parsed.isHealthy),
-    source: 'gemini',
+    source: 'groq',
   };
 }
 
@@ -111,11 +112,11 @@ function fallbackDetect(fileSizeBytes: number): DetectionResult {
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export async function detectDisease(imagePath: string, fileSizeBytes: number): Promise<DetectionResult> {
-  if (process.env.GEMINI_API_KEY) {
-    console.log('[Disease] Using Gemini 2.0 Flash vision model…');
-    return detectWithGemini(imagePath);
+  if (process.env.GROQ_API_KEY) {
+    console.log('[Disease] Using Groq Llama 3.2 Vision model…');
+    return detectWithGroq(imagePath);
   }
 
-  console.warn('[Disease] No GEMINI_API_KEY set — running in demo mode. Get a free key at aistudio.google.com');
+  console.warn('[Disease] No GROQ_API_KEY set — running in demo mode. Get a free key at console.groq.com');
   return fallbackDetect(fileSizeBytes);
 }
