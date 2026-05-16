@@ -6,7 +6,6 @@ const dbPath = process.env.DB_PATH || './agrisense.db';
 const resolvedPath = path.resolve(dbPath);
 
 const db = new Database(resolvedPath);
-db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
 export function initDb() {
