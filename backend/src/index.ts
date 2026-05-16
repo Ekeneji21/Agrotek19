@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { initDb } from './db';
+import { startWeatherAlertScheduler } from './services/weatherAlerts';
 
 import authRoutes from './routes/auth';
 import farmsRoutes from './routes/farms';
@@ -39,6 +40,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 initDb();
+startWeatherAlertScheduler();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`AgriSense API running on http://localhost:${PORT}/api`);

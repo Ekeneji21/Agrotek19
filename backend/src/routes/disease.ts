@@ -5,7 +5,8 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db';
 import { requireAuth, AuthRequest } from '../middleware/auth';
-import { DiseaseScan } from '../types';
+import { detectDisease } from '../services/diseaseDetection';
+import { createAlert } from './alerts';
 
 const router = Router();
 router.use(requireAuth);
@@ -27,66 +28,41 @@ const upload = multer({
   },
 });
 
-// Disease knowledge base for realistic AI responses
-// In production, replace analyzeImage() with a real ML model call (e.g. TensorFlow, Roboflow, PlantNet API)
-const DISEASE_KNOWLEDGE: Record<string, { disease: string; severity: string; treatment: string }[]> = {
-  Maize: [
-    { disease: 'Grey Leaf Spot', severity: 'Medium', treatment: 'Apply azoxystrobin or propiconazole fungicide at first sign. Ensure good air circulation, practice crop rotation, and plant resistant varieties next season.' },
-    { disease: 'Northern Leaf Blight', severity: 'High', treatment: 'Apply mancozeb or tebuconazole fungicide. Remove and destroy infected plant material. Avoid overhead irrigation.' },
-    { disease: 'Fall Armyworm', severity: 'High', treatment: 'Apply emamectin benzoate or spinetoram insecticide early in infestation. Monitor fields twice weekly. Use pheromone traps.' },
-    { disease: 'Streak Virus', severity: 'High', treatment: 'No cure; remove infected plants immediately. Control leafhopper vectors with imidacloprid. Plant certified virus-free seed.' },
-  ],
-  Sorghum: [
-    { disease: 'Anthracnose', severity: 'High', treatment: 'Apply thiophanate-methyl or carbendazim. Remove infected debris. Plant resistant varieties and avoid dense planting.' },
-    { disease: 'Downy Mildew', severity: 'Medium', treatment: 'Seed treatment with metalaxyl. Apply fosetyl-aluminium foliar spray. Improve field drainage.' },
-    { disease: 'Head Smut', severity: 'Medium', treatment: 'Use certified smut-free seed. Treat seeds with carboxin + thiram. Remove galls before they break open.' },
-  ],
-  Cotton: [
-    { disease: 'Bacterial Blight', severity: 'Low', treatment: 'Use certified disease-free seed. Apply copper oxychloride spray. Ensure proper field drainage and avoid mechanical injuries.' },
-    { disease: 'Bollworm Infestation', severity: 'High', treatment: 'Apply cypermethrin or chlorpyrifos. Monitor with pheromone traps. Use Bt-based biopesticides for early-stage larvae.' },
-    { disease: 'Alternaria Leaf Spot', severity: 'Medium', treatment: 'Apply mancozeb or chlorothalonil. Reduce humidity through proper spacing. Destroy crop debris after harvest.' },
-  ],
-  Tomato: [
-    { disease: 'Early Blight', severity: 'High', treatment: 'Apply chlorothalonil or mancozeb fungicide every 7 days. Mulch around plants to prevent soil splash. Remove lower infected leaves.' },
-    { disease: 'Late Blight', severity: 'High', treatment: 'Apply cymoxanil + mancozeb or metalaxyl immediately. Avoid overhead watering. Destroy all infected plant material.' },
-    { disease: 'Fusarium Wilt', severity: 'High', treatment: 'No effective chemical cure. Remove and destroy infected plants. Solarize soil. Plant resistant varieties next season.' },
-  ],
-  Wheat: [
-    { disease: 'Stem Rust', severity: 'High', treatment: 'Apply propiconazole or tebuconazole at flag leaf stage. Plant resistant varieties. Monitor from ear emergence.' },
-    { disease: 'Powdery Mildew', severity: 'Medium', treatment: 'Apply triadimefon or myclobutanil. Ensure adequate spacing for air circulation. Avoid excess nitrogen.' },
-  ],
-};
-
-const CROPS = Object.keys(DISEASE_KNOWLEDGE);
-
-function analyzeImage(fileSizeBytes: number): { crop: string; disease: string; confidence: number; severity: string; treatment: string } {
-  // Deterministic-ish selection based on file characteristics
-  // Replace this function body with a real ML model call in production
-  const cropIdx = fileSizeBytes % CROPS.length;
-  const crop = CROPS[cropIdx];
-  const diseases = DISEASE_KNOWLEDGE[crop];
-  const diseaseIdx = Math.floor(fileSizeBytes / 1024) % diseases.length;
-  const result = diseases[diseaseIdx];
-  const confidence = 82 + (fileSizeBytes % 17); // 82–98%
-
-  return { crop, confidence, ...result };
-}
-
 // POST /disease/scan
-router.post('/scan', upload.single('image'), (req: AuthRequest, res: Response) => {
+router.post('/scan', upload.single('image'), async (req: AuthRequest, res: Response) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'Image file is required' });
 
-  const analysis = analyzeImage(req.file.size);
-  const id = uuidv4();
-  const imagePath = `/uploads/${req.file.filename}`;
+  const imagePath = path.join(uploadsDir, req.file.filename);
 
-  db.prepare(`
-    INSERT INTO disease_scans (id, user_id, image_path, crop, disease, confidence, severity, treatment)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, req.userId, imagePath, analysis.crop, analysis.disease, analysis.confidence, analysis.severity, analysis.treatment);
+  try {
+    const analysis = await detectDisease(imagePath, req.file.size);
+    const id = uuidv4();
+    const dbImagePath = `/uploads/${req.file.filename}`;
 
-  const scan = db.prepare('SELECT * FROM disease_scans WHERE id = ?').get(id);
-  return res.json({ success: true, message: 'Scan complete', data: scan });
+    db.prepare(`
+      INSERT INTO disease_scans (id, user_id, image_path, crop, disease, confidence, severity, treatment)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.userId, dbImagePath, analysis.crop, analysis.disease, analysis.confidence, analysis.severity, analysis.treatment);
+
+    // Fire an alert for Medium/High severity detections
+    if (!analysis.isHealthy && (analysis.severity === 'High' || analysis.severity === 'Medium')) {
+      const alertSeverity = analysis.severity === 'High' ? 'High' : 'Medium';
+      createAlert(
+        req.userId!,
+        'disease',
+        `${analysis.severity} Risk: ${analysis.disease} Detected`,
+        `AI scan identified ${analysis.disease} on your ${analysis.crop} with ${analysis.confidence}% confidence. ${analysis.severity === 'High' ? 'Immediate action recommended.' : 'Monitor closely and consider treatment.'}`,
+        alertSeverity
+      );
+    }
+
+    const scan = db.prepare('SELECT * FROM disease_scans WHERE id = ?').get(id);
+    return res.json({ success: true, message: 'Scan complete', data: scan });
+  } catch (err: any) {
+    // Clean up uploaded file on error
+    fs.unlink(imagePath, () => {});
+    return res.status(500).json({ success: false, message: err.message || 'Scan failed' });
+  }
 });
 
 // GET /disease/history

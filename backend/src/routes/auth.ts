@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import db from '../db';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { User } from '../types';
+import { createAlert } from './alerts';
 
 const router = Router();
 
@@ -35,6 +36,11 @@ router.post('/register', (req: Request, res: Response) => {
   `).run(uuidv4(), id);
 
   const user = db.prepare('SELECT id, name, email, phone, location, account_type, avatar_url, created_at FROM users WHERE id = ?').get(id) as Omit<User, 'password_hash'>;
+
+  // Welcome alert
+  createAlert(id, 'system', 'Welcome to AgriSense Zimbabwe! 🌱',
+    `Hi ${name}! Your account is ready. Start by adding your first farm, then scan a crop image for AI disease detection. Check Weather Intel for live forecasts.`,
+    'Info');
 
   return res.status(201).json({ success: true, message: 'Registered successfully', data: { token: makeToken(id, email), user } });
 });

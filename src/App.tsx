@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import './App.css';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { DiseaseDetection } from './pages/DiseaseDetection';
 import { MyFarms } from './pages/MyFarms';
@@ -10,23 +13,41 @@ import { Alerts } from './pages/Alerts';
 import { Advisory } from './pages/Advisory';
 import { Marketplace } from './pages/Marketplace';
 import { Settings } from './pages/Settings';
+import { Loader2 } from 'lucide-react';
 
-function App() {
+function AppShell() {
+  const { user, loading } = useAuth();
+  const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  if (loading) {
+    return (
+      <div className="auth-loading">
+        <Loader2 size={40} className="animate-spin text-primary" />
+        <p className="text-muted mt-3 text-sm">Loading AgriSense…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return authScreen === 'login'
+      ? <Login onSwitch={() => setAuthScreen('register')} />
+      : <Register onSwitch={() => setAuthScreen('login')} />;
+  }
+
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
-      case 'my-farms': return <MyFarms />;
+      case 'dashboard':        return <Dashboard />;
+      case 'my-farms':         return <MyFarms />;
       case 'disease-detection': return <DiseaseDetection />;
-      case 'weather-intel': return <WeatherIntel />;
-      case 'alerts': return <Alerts />;
-      case 'advisory': return <Advisory />;
-      case 'marketplace': return <Marketplace />;
-      case 'settings': return <Settings />;
-      default: return <Dashboard />;
+      case 'weather-intel':    return <WeatherIntel />;
+      case 'alerts':           return <Alerts />;
+      case 'advisory':         return <Advisory />;
+      case 'marketplace':      return <Marketplace />;
+      case 'settings':         return <Settings />;
+      default:                 return <Dashboard />;
     }
   };
 
@@ -38,14 +59,12 @@ function App() {
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
       />
-
       <main className="main-content">
         <Header
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isDarkMode={isDarkMode}
           toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
-
         <div className="dashboard-content">
           {renderContent()}
         </div>
@@ -54,4 +73,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
