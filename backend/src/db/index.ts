@@ -1,13 +1,13 @@
-import Database, { Database as DatabaseType } from 'better-sqlite3';
+import { Database } from 'node-sqlite3-wasm';
 import path from 'path';
 import fs from 'fs';
 
 const dbPath = process.env.DB_PATH || './agrisense.db';
 const resolvedPath = path.resolve(dbPath);
 
-const db: DatabaseType = new Database(resolvedPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new Database(resolvedPath);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 export function initDb() {
   db.exec(`
@@ -174,13 +174,16 @@ function seedData() {
     ['prod-8', 'Urea Fertilizer 46% N', 'Fertilizer', 35, '50kg', 4.6, 72, 'ZimFert Ltd', 280],
   ];
 
-  const txn = db.transaction(() => {
-    agronomists.forEach(a => insertAg.run(...(a as Parameters<typeof insertAg.run>)));
-    tips.forEach(t => insertTip.run(...(t as Parameters<typeof insertTip.run>)));
-    products.forEach(p => insertProduct.run(...(p as Parameters<typeof insertProduct.run>)));
-  });
-
-  txn();
+  db.exec('BEGIN');
+  try {
+    agronomists.forEach(a => insertAg.run(...a));
+    tips.forEach(t => insertTip.run(...t));
+    products.forEach(p => insertProduct.run(...p));
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 export default db;
