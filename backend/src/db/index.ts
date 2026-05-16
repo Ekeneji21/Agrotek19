@@ -176,9 +176,9 @@ function seedData() {
 
   db.exec('BEGIN');
   try {
-    agronomists.forEach(a => insertAg.run(...a));
-    tips.forEach(t => insertTip.run(...t));
-    products.forEach(p => insertProduct.run(...p));
+    agronomists.forEach(a => insertAg.run(a));
+    tips.forEach(t => insertTip.run(t));
+    products.forEach(p => insertProduct.run(p));
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
