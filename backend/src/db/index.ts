@@ -1,11 +1,13 @@
-import { Database } from 'node-sqlite3-wasm';
+// node:sqlite is built into Node.js 22.5+ — no npm package needed
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { DatabaseSync } = require('node:sqlite');
 import path from 'path';
 import fs from 'fs';
 
 const dbPath = process.env.DB_PATH || './agrisense.db';
 const resolvedPath = path.resolve(dbPath);
 
-const db = new Database(resolvedPath);
+const db = new DatabaseSync(resolvedPath);
 
 export function initDb() {
   db.exec(`
@@ -174,9 +176,9 @@ function seedData() {
 
   db.exec('BEGIN');
   try {
-    agronomists.forEach(a => insertAg.run(a));
-    tips.forEach(t => insertTip.run(t));
-    products.forEach(p => insertProduct.run(p));
+    agronomists.forEach(a => insertAg.run(...a));
+    tips.forEach(t => insertTip.run(...t));
+    products.forEach(p => insertProduct.run(...p));
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
