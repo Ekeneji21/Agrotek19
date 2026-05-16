@@ -11,20 +11,14 @@ export interface DetectionResult {
   source: 'gemini' | 'demo';
 }
 
-const PLANT_CHECK_PROMPT = `Look at this image carefully. Does it show a plant, crop, or any plant part (leaf, stem, root, fruit, flower)?
+const PROMPT = `You are an expert agricultural plant pathologist.
 
-Answer with a single word only: YES or NO.
+FIRST: Is this image showing a plant, crop, or plant part (leaf, stem, fruit, flower)?
+If NO (e.g. people, animals, objects, code, screenshots, text, soil only) — respond with exactly: {"notPlant":true}
 
-Answer NO if the image shows: people, animals, objects, buildings, vehicles, code, text, screenshots, soil without plants, or anything that is not a plant.`;
+If YES: identify the exact crop from its visual features (leaf shape, texture, color, stem, fruit). Do NOT assume or default to Maize. Possible crops include: Maize, Tobacco, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut, Potato, Pepper, Cabbage, Onion, Sugarcane, Sunflower, Cassava, Sweet Potato, Banana, Mango, Citrus, Bean, Cowpea, and others.
 
-const DIAGNOSIS_PROMPT = `You are an expert agricultural plant pathologist. Analyze this image carefully.
-
-STEP 1 — Identify the exact crop species by its visual characteristics (leaf shape, texture, color, stem, fruit). Do NOT default to Maize. Common crops include: Maize, Tobacco, Tomato, Cotton, Wheat, Sorghum, Soybean, Groundnut, Potato, Pepper, Cabbage, Onion, Sugarcane, Sunflower, Cassava, Sweet Potato, Banana, Mango, Citrus, Coffee, Tea, Bean, Cowpea, Pea — identify whichever matches the image.
-
-STEP 2 — Assess disease symptoms on the identified crop.
-
-Respond with ONLY a valid JSON object — no markdown, no explanation:
-
+Respond with ONLY this JSON — no markdown, no explanation:
 {
   "crop": "the actual crop species visible in the image",
   "isHealthy": true or false,
@@ -32,35 +26,24 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "confidence": integer 0-100,
   "severity": "Low" or "Medium" or "High",
   "treatment": "2-3 specific actionable treatment sentences with chemical names where applicable"
-}
-
-Rules:
-- crop must match what is visually in the image — never assume or default
-- If the plant is healthy, set isHealthy=true, disease='None — Healthy', severity='Low'
-- severity: Low=early/minor, Medium=moderate spread, High=severe/widespread`;
+}`;
 
 async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
   const apiKey = process.env.GEMINI_API_KEY!;
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const imageData = fs.readFileSync(imagePath);
   const base64 = imageData.toString('base64');
   const ext = imagePath.split('.').pop()?.toLowerCase() ?? 'jpeg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
-  const inlineImage = { inlineData: { data: base64, mimeType } };
+  const result = await model.generateContent([
+    PROMPT,
+    { inlineData: { data: base64, mimeType } },
+  ]);
 
-  // Step 1: verify it's actually a plant
-  const checkResult = await model.generateContent([PLANT_CHECK_PROMPT, inlineImage]);
-  const checkText = checkResult.response.text().trim().toUpperCase();
-  if (!checkText.startsWith('YES')) {
-    throw new Error('Image does not appear to show a crop or plant. Please upload a clear photo of a plant leaf, stem, or fruit.');
-  }
-
-  // Step 2: diagnose the disease
-  const diagResult = await model.generateContent([DIAGNOSIS_PROMPT, inlineImage]);
-  const text = diagResult.response.text().trim();
+  const text = result.response.text().trim();
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   let parsed: any;
@@ -68,6 +51,10 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
     parsed = JSON.parse(jsonText);
   } catch {
     throw new Error(`Gemini returned non-JSON response: ${text.slice(0, 200)}`);
+  }
+
+  if (parsed.notPlant) {
+    throw new Error('Image does not appear to show a crop or plant. Please upload a clear photo of a plant leaf, stem, or fruit.');
   }
 
   const severity: DetectionResult['severity'] =
@@ -86,14 +73,14 @@ async function detectWithGemini(imagePath: string): Promise<DetectionResult> {
 
 // ─── DEMO FALLBACK (no API key set) ──────────────────────────────────────────
 const DEMO_DISEASES: { crop: string; disease: string; severity: DetectionResult['severity'] }[] = [
-  { crop: 'Maize',   disease: 'Grey Leaf Spot',      severity: 'Medium' },
-  { crop: 'Maize',   disease: 'Northern Leaf Blight', severity: 'High'   },
-  { crop: 'Maize',   disease: 'Common Rust',          severity: 'Medium' },
-  { crop: 'Tomato',  disease: 'Early Blight',         severity: 'High'   },
-  { crop: 'Tomato',  disease: 'Late Blight',          severity: 'High'   },
-  { crop: 'Sorghum', disease: 'Anthracnose',          severity: 'High'   },
-  { crop: 'Cotton',  disease: 'Bacterial Blight',     severity: 'Low'    },
-  { crop: 'Wheat',   disease: 'Powdery Mildew',       severity: 'Medium' },
+  { crop: 'Maize',   disease: 'Grey Leaf Spot',       severity: 'Medium' },
+  { crop: 'Maize',   disease: 'Northern Leaf Blight',  severity: 'High'   },
+  { crop: 'Maize',   disease: 'Common Rust',           severity: 'Medium' },
+  { crop: 'Tomato',  disease: 'Early Blight',          severity: 'High'   },
+  { crop: 'Tomato',  disease: 'Late Blight',           severity: 'High'   },
+  { crop: 'Sorghum', disease: 'Anthracnose',           severity: 'High'   },
+  { crop: 'Cotton',  disease: 'Bacterial Blight',      severity: 'Low'    },
+  { crop: 'Wheat',   disease: 'Powdery Mildew',        severity: 'Medium' },
 ];
 
 const DEMO_TREATMENTS: Record<string, string> = {
@@ -121,7 +108,7 @@ function fallbackDetect(fileSizeBytes: number): DetectionResult {
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export async function detectDisease(imagePath: string, fileSizeBytes: number): Promise<DetectionResult> {
   if (process.env.GEMINI_API_KEY) {
-    console.log('[Disease] Using Gemini 2.0 Flash vision model…');
+    console.log('[Disease] Using Gemini 1.5 Flash vision model…');
     return detectWithGemini(imagePath);
   }
 
