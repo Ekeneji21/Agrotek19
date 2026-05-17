@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Camera, X, Loader2, AlertTriangle, CheckCircle, Leaf, Bug, Zap } from 'lucide-react';
+import { Upload, Camera, X, Loader2, AlertTriangle, CheckCircle, Leaf, Bug, Zap, Info } from 'lucide-react';
 import { diseaseApi } from '../services/api';
 
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace('/api', '');
@@ -11,6 +11,7 @@ interface ScanResult {
   confidence: number;
   severity: string;
   treatment: string;
+  disease_explanation: string;
   image_path: string;
   scanned_at: string;
 }
@@ -181,13 +182,23 @@ export function DiseaseDetection() {
                   </div>
                 </div>
 
-                <div className="scan-result-card flex-1" style={{ minWidth: 220, background: 'var(--light-green)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Leaf size={20} className="text-primary" />
-                    <span className="font-bold">Recommended Treatment</span>
+                <div className="flex flex-col gap-3 flex-1" style={{ minWidth: 220 }}>
+                  {result.disease_explanation && (
+                    <div className="scan-result-card" style={{ background: 'var(--warning-bg)', borderLeft: '4px solid var(--warning-orange)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info size={16} style={{ color: 'var(--warning-orange)' }} />
+                        <span className="font-bold text-sm">About This Disease</span>
+                      </div>
+                      <p className="text-sm" style={{ lineHeight: 1.7 }}>{result.disease_explanation}</p>
+                    </div>
+                  )}
+                  <div className="scan-result-card" style={{ background: 'var(--light-green)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Leaf size={16} className="text-primary" />
+                      <span className="font-bold text-sm">Recommended Treatment</span>
+                    </div>
+                    <p className="text-sm" style={{ lineHeight: 1.7 }}>{result.treatment}</p>
                   </div>
-                  <p className="text-sm" style={{ lineHeight: 1.7 }}>{result.treatment}</p>
-                  <button className="btn btn-primary btn-sm mt-4">Contact Agronomist</button>
                 </div>
               </div>
             </div>

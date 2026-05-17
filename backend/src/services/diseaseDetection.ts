@@ -7,6 +7,7 @@ export interface DetectionResult {
   confidence: number;
   severity: 'Low' | 'Medium' | 'High';
   treatment: string;
+  disease_explanation: string;
   isHealthy: boolean;
   source: 'groq' | 'demo';
 }
@@ -25,7 +26,8 @@ Respond with ONLY this JSON — no markdown, no explanation:
   "disease": "exact disease name, or 'None — Healthy' if healthy",
   "confidence": integer 0-100,
   "severity": "Low" or "Medium" or "High",
-  "treatment": "2-3 specific actionable treatment sentences with chemical names where applicable"
+  "disease_explanation": "2-3 sentences explaining: what this disease is, how it spreads (causal organism: fungus/bacteria/virus/pest), what conditions trigger it, and what happens to the plant if left untreated",
+  "treatment": "2-3 specific actionable treatment sentences with chemical names and Zimbabwe-available products where applicable"
 }`;
 
 async function detectWithGroq(imagePath: string): Promise<DetectionResult> {
@@ -70,6 +72,7 @@ async function detectWithGroq(imagePath: string): Promise<DetectionResult> {
     disease: String(parsed.disease ?? 'Unknown'),
     confidence: Math.min(100, Math.max(0, Number(parsed.confidence) || 0)),
     severity,
+    disease_explanation: String(parsed.disease_explanation ?? ''),
     treatment: String(parsed.treatment ?? 'Consult your local agronomist.'),
     isHealthy: Boolean(parsed.isHealthy),
     source: 'groq',
@@ -104,6 +107,7 @@ function fallbackDetect(fileSizeBytes: number): DetectionResult {
   return {
     ...entry,
     confidence: 82 + (fileSizeBytes % 17),
+    disease_explanation: 'This disease is caused by a fungal pathogen that spreads through infected crop residue and wind-borne spores. It thrives in warm, humid conditions and can cause significant yield loss if left untreated.',
     treatment: DEMO_TREATMENTS[entry.disease] ?? 'Consult your local agronomist.',
     isHealthy: false,
     source: 'demo',

@@ -75,8 +75,8 @@ export const advisoryApi = {
   list: () => request<any[]>('/advisory'),
   getStats: () => request<any>('/advisory/stats'),
   getAgronomists: () => request<any[]>('/advisory/agronomists'),
-  requestConsultation: (agronomistId: string, message: string) =>
-    request<any>('/advisory/consult', { method: 'POST', body: JSON.stringify({ agronomistId, message }) }),
+  requestConsultation: (message: string) =>
+    request<any>('/advisory/consult', { method: 'POST', body: JSON.stringify({ message }) }),
   getConsultations: () => request<any[]>('/advisory/consultations'),
 };
 

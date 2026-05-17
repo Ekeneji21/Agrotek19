@@ -40,9 +40,9 @@ router.post('/scan', upload.single('image'), async (req: AuthRequest, res: Respo
     const dbImagePath = `/uploads/${req.file.filename}`;
 
     db.prepare(`
-      INSERT INTO disease_scans (id, user_id, image_path, crop, disease, confidence, severity, treatment)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, req.userId, dbImagePath, analysis.crop, analysis.disease, analysis.confidence, analysis.severity, analysis.treatment);
+      INSERT INTO disease_scans (id, user_id, image_path, crop, disease, confidence, severity, treatment, disease_explanation)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.userId, dbImagePath, analysis.crop, analysis.disease, analysis.confidence, analysis.severity, analysis.treatment, analysis.disease_explanation ?? '');
 
     // Fire an alert for Medium/High severity detections
     if (!analysis.isHealthy && (analysis.severity === 'High' || analysis.severity === 'Medium')) {

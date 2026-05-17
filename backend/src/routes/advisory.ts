@@ -35,25 +35,41 @@ router.get('/stats', (_req: AuthRequest, res: Response) => {
   });
 });
 
-// POST /advisory/consult — submit request; AI replies asynchronously after 3 minutes
-router.post('/consult', (req: AuthRequest, res: Response) => {
-  const { agronomistId, message } = req.body;
-  if (!agronomistId || !message)
-    return res.status(400).json({ success: false, message: 'agronomistId and message are required' });
+// Find nearest agronomist to farmer based on location string matching
+function findNearestAgronomist(farmerLocation: string): Agronomist {
+  const agronomists = db.prepare('SELECT * FROM agronomists WHERE available = 1 ORDER BY rating DESC').all() as Agronomist[];
+  if (!agronomists.length) {
+    return db.prepare('SELECT * FROM agronomists ORDER BY rating DESC LIMIT 1').get() as Agronomist;
+  }
+  const loc = (farmerLocation || '').toLowerCase();
+  // Try to match by city/region name
+  const match = agronomists.find(a => {
+    const aLoc = a.location.toLowerCase();
+    return loc.includes(aLoc) || aLoc.includes(loc.split(/[\s,]+/)[0]);
+  });
+  return match ?? agronomists[0];
+}
 
-  const ag = db.prepare('SELECT * FROM agronomists WHERE id = ?').get(agronomistId) as Agronomist | undefined;
-  if (!ag) return res.status(404).json({ success: false, message: 'Agronomist not found' });
+// POST /advisory/consult — auto-routes to nearest agronomist; AI replies asynchronously after 3 minutes
+router.post('/consult', (req: AuthRequest, res: Response) => {
+  const { message } = req.body;
+  if (!message)
+    return res.status(400).json({ success: false, message: 'message is required' });
+
+  const farmer = db.prepare('SELECT name, location FROM users WHERE id = ?').get(req.userId) as { name: string; location: string } | undefined;
+  const ag = findNearestAgronomist(farmer?.location ?? '') as Agronomist;
 
   const id = uuidv4();
-  db.prepare('INSERT INTO consultations (id, user_id, agronomist_id, message, status) VALUES (?, ?, ?, ?, ?)').run(id, req.userId, agronomistId, message, 'pending');
+  db.prepare('INSERT INTO consultations (id, user_id, agronomist_id, message, status) VALUES (?, ?, ?, ?, ?)').run(id, req.userId, ag.id, message, 'pending');
 
-  // Schedule AI reply in 3 minutes (for testing; production would use a queue)
+  // Schedule AI reply in 3 minutes
   const REPLY_DELAY_MS = 3 * 60 * 1000;
   setTimeout(async () => {
     if (!process.env.GROQ_API_KEY) return;
     try {
       const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-      const prompt = `You are ${ag.name}, a Zimbabwean agronomist specialising in ${ag.specialty}, based in ${ag.location}. A farmer has sent you this consultation request:\n\n"${message}"\n\nReply as an expert agronomist. Be practical, specific to Zimbabwe conditions, and include:\n- Direct answer to their question\n- Recommended products/chemicals with specific Zimbabwe brands if applicable\n- Any nearby shops or market info if chemicals are mentioned\n- Action steps\nKeep reply under 300 words.`;
+      const farmerName = farmer?.name ?? 'the farmer';
+      const prompt = `You are ${ag.name}, a Zimbabwean agronomist specialising in ${ag.specialty}, based in ${ag.location}. ${farmerName} has sent you this consultation:\n\n"${message}"\n\nReply as this expert agronomist. Be practical, Zimbabwe-specific, and include:\n- Direct answer\n- Recommended products/chemicals with Zimbabwe brand names if applicable (ZimFert, SeedCo, Agritex, AgroChem Zim, Windmill)\n- Where to find inputs: Agritex depots, agro-dealers, GMB stockists near ${ag.location}\n- Clear action steps\nKeep reply under 300 words.`;
       const completion = await groq.chat.completions.create({
         model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [{ role: 'user', content: prompt }],
@@ -69,7 +85,7 @@ router.post('/consult', (req: AuthRequest, res: Response) => {
     }
   }, REPLY_DELAY_MS);
 
-  return res.status(201).json({ success: true, message: 'Consultation submitted. You will receive a reply within 3 minutes.', data: { id, status: 'pending' } });
+  return res.status(201).json({ success: true, message: 'Consultation submitted. You will receive a reply within 3 minutes.', data: { id, agronomist_name: ag.name, agronomist_specialty: ag.specialty, agronomist_location: ag.location, status: 'pending' } });
 });
 
 // GET /advisory/consultations

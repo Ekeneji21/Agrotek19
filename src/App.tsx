@@ -10,6 +10,7 @@ import { DiseaseDetection } from './pages/DiseaseDetection';
 import { WeatherIntel } from './pages/WeatherIntel';
 import { Alerts } from './pages/Alerts';
 import { Advisory } from './pages/Advisory';
+import { Consultations } from './pages/Consultations';
 import { Marketplace } from './pages/Marketplace';
 import { Settings } from './pages/Settings';
 import { Finances } from './pages/Finances';
@@ -46,6 +47,7 @@ function AppShell() {
       case 'weather-intel':    return <WeatherIntel />;
       case 'alerts':           return <Alerts />;
       case 'advisory':         return <Advisory />;
+      case 'consultations':    return <Consultations />;
       case 'marketplace':      return <Marketplace />;
       case 'finances':         return <Finances />;
       case 'planner':          return <FarmPlanner />;

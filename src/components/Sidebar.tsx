@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Activity, CloudSun,
-  AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign, Sprout
+  AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign, Sprout, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { alertsApi } from '../services/api';
@@ -32,17 +32,18 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
   }, []);
 
   const mainNav = [
-    { id: 'dashboard',        label: 'Dashboard',         icon: LayoutDashboard },
-    { id: 'planner',          label: 'Farm Planner',      icon: Sprout, badge: 'AI' },
+    { id: 'dashboard',         label: 'Dashboard',         icon: LayoutDashboard },
+    { id: 'planner',           label: 'Farm Planner',      icon: Sprout, badge: 'AI' },
     { id: 'disease-detection', label: 'Disease Detection', icon: Activity, badge: 'AI' },
-    { id: 'weather-intel',    label: 'Weather Intel',     icon: CloudSun },
-    { id: 'alerts',           label: 'Alerts',            icon: AlertTriangle, badgeCount: unreadCount },
+    { id: 'consultations',     label: 'Consultations',     icon: MessageCircle, badge: 'AI' },
+    { id: 'weather-intel',     label: 'Weather Intel',     icon: CloudSun },
+    { id: 'alerts',            label: 'Alerts',            icon: AlertTriangle, badgeCount: unreadCount },
   ];
 
   const secondaryNav = [
-    { id: 'advisory',    label: 'Advisory',    icon: BookOpen },
-    { id: 'finances',    label: 'Finances',    icon: DollarSign },
-    { id: 'marketplace', label: 'Marketplace', icon: Store },
+    { id: 'advisory',    label: 'Knowledge Base', icon: BookOpen },
+    { id: 'finances',    label: 'Finances',       icon: DollarSign },
+    { id: 'marketplace', label: 'Marketplace',    icon: Store },
   ];
 
   const handleClick = (id: string) => { setActiveTab(id); setIsOpen(false); };

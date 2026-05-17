@@ -149,6 +149,7 @@ export function initDb() {
   `);
 
   // Add new columns to existing tables if upgrading
+  try { db.exec(`ALTER TABLE disease_scans ADD COLUMN disease_explanation TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE agronomists ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE agronomists ADD COLUMN whatsapp TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE agronomists ADD COLUMN email TEXT DEFAULT ''`); } catch {}
