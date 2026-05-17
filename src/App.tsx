@@ -16,6 +16,7 @@ import { Settings } from './pages/Settings';
 import { Finances } from './pages/Finances';
 import { FarmPlanner } from './pages/FarmPlanner';
 import { Loader2 } from 'lucide-react';
+import { AgroChat } from './components/AgroChat';
 
 function AppShell() {
   const { user, loading } = useAuth();
@@ -73,6 +74,7 @@ function AppShell() {
           {renderContent()}
         </div>
       </main>
+      <AgroChat />
     </div>
   );
 }

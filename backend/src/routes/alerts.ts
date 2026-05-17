@@ -70,6 +70,13 @@ router.put('/settings', (req: AuthRequest, res: Response) => {
   return res.json({ success: true, message: 'Settings updated', data: settings });
 });
 
+// DELETE /alerts/:id
+router.delete('/:id', (req: AuthRequest, res: Response) => {
+  const result = db.prepare('DELETE FROM alerts WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+  if (result.changes === 0) return res.status(404).json({ success: false, message: 'Alert not found' });
+  return res.json({ success: true, message: 'Deleted', data: null });
+});
+
 // Internal helper – called when a disease scan happens to insert an alert for the user
 export function createAlert(userId: string, type: string, title: string, message: string, severity: string) {
   const id = uuidv4();

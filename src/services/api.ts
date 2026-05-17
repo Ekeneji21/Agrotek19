@@ -65,6 +65,7 @@ export const weatherApi = {
 export const alertsApi = {
   list: () => request<any[]>('/alerts'),
   markRead: (id: string) => request<void>(`/alerts/${id}/read`, { method: 'PUT' }),
+  delete: (id: string) => request<void>(`/alerts/${id}`, { method: 'DELETE' }),
   markAllRead: () => request<void>('/alerts/read-all/bulk', { method: 'PUT' }),
   getSettings: () => request<any>('/alerts/settings'),
   updateSettings: (data: any) => request<any>('/alerts/settings', { method: 'PUT', body: JSON.stringify(data) }),
@@ -105,6 +106,15 @@ export const plannerApi = {
   getSaved: () => request<any[]>('/planner/saved'),
   getSavedById: (id: string) => request<any>(`/planner/saved/${id}`),
   deleteSaved: (id: string) => request<void>(`/planner/saved/${id}`, { method: 'DELETE' }),
+};
+
+export const marketApi = {
+  getPrices: () => request<any>('/market/prices'),
+};
+
+export const chatApi = {
+  send: (message: string, history: { role: string; content: string }[]) =>
+    request<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
 };
 
 export const transactionsApi = {

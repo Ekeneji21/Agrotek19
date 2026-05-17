@@ -15,6 +15,8 @@ import marketplaceRoutes from './routes/marketplace';
 import analyticsRoutes from './routes/analytics';
 import transactionsRoutes from './routes/transactions';
 import plannerRoutes from './routes/planner';
+import marketRoutes from './routes/market';
+import chatRoutes from './routes/chat';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -35,6 +37,8 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/planner', plannerRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

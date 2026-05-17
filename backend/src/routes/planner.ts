@@ -127,13 +127,46 @@ Generate a complete, highly practical farming plan. Respond with ONLY valid JSON
   "key_tips": ["practical tip 1", "practical tip 2", "practical tip 3"]
 }
 
+VERIFIED ZIMBABWE 2024/2025 COMMODITY PRICES (use these EXACTLY — do not invent prices):
+- Tobacco (flue-cured): TIMB auction avg USD 3.10/kg. Grade A: USD 3.50/kg. Grade B: USD 2.80/kg.
+- Maize: GMB floor USD 280/tonne (USD 0.28/kg). Market USD 300-350/tonne.
+- Cotton: Cottco buying USD 0.52/kg seed cotton.
+- Soybean: GMB USD 480/tonne. Private buyers USD 500-520/tonne.
+- Wheat: GMB USD 390/tonne. Millers up to USD 420/tonne.
+- Groundnuts: USD 600-700/tonne shelled.
+- Sunflower: USD 550/tonne (National Foods).
+- Sorghum: GMB USD 220/tonne.
+- Sweet potatoes: USD 0.50-0.80/kg wholesale.
+- Tomatoes: Mbare Musika USD 0.30-0.80/kg wholesale.
+- Onions: USD 0.50-0.80/kg wholesale.
+- Paprika: Export USD 2.50-4.00/kg dried.
+- Macadamia: USD 3.00-4.50/kg in-shell.
+- Sugarcane: Hippo Valley/Triangle USD 35-42/tonne.
+- Barley: Delta Beverages contract USD 350-400/tonne.
+
+VERIFIED INPUT COSTS Zimbabwe 2024/2025:
+- SeedCo maize SC403/SC513: USD 8-12/kg seed (2 kg/ha needed)
+- Tobacco seedlings: USD 8-15 per 1000 plants from nursery
+- AN (Ammonium Nitrate 34.5%): USD 650-700/tonne (ZimFert/Windmill)
+- Compound D (7:14:7): USD 580-620/tonne
+- Compound L (5:18:20): USD 600-650/tonne
+- Urea (46% N): USD 700-750/tonne
+- Tobacco Compound S (basal): USD 620-660/tonne
+- KNO3 (top dress tobacco): USD 950-1000/tonne
+- Glyphosate (Roundup): USD 5-7/litre
+- 2,4-D: USD 4-6/litre; Lambda-cyhalothrin (Karate): USD 8-12/litre
+- Mancozeb (Dithane): USD 8-12/kg; Ridomil Gold: USD 18-25/kg
+- Tractor hire (ploughing): USD 35-55/ha
+- Casual labour: USD 3-5/day
+
 Rules:
-- All costs in USD realistic for Zimbabwe 2024/2025
+- farmgate_price_usd_per_unit MUST match verified prices above — do NOT invent or round prices
+- All input costs must match verified input costs above
 - All quantities exact — never say "sufficient" or "as needed"
-- Mention specific Zimbabwe brands/suppliers: SeedCo, Agritex, ZimFert, Cottco, TIMB, GMB, Prodairy, etc.
+- Use specific Zimbabwe brands/suppliers: SeedCo, ZimFert, Cottco, TIMB, GMB, Windmill, Agritex, CFI, etc.
 - phases must cover full crop cycle from land prep to post-harvest
 - inputs list must be complete — include every seed, fertilizer, chemical, tool needed
-- yield estimates must be realistic for Region ${region} smallholder conditions
+- yield estimates must be realistic for Region ${region} smallholder/small commercial conditions
 `.trim();
 
 // POST /planner/generate
