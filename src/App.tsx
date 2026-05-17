@@ -7,7 +7,6 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { DiseaseDetection } from './pages/DiseaseDetection';
-import { MyFarms } from './pages/MyFarms';
 import { WeatherIntel } from './pages/WeatherIntel';
 import { Alerts } from './pages/Alerts';
 import { Advisory } from './pages/Advisory';
@@ -43,7 +42,6 @@ function AppShell() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':        return <Dashboard />;
-      case 'my-farms':         return <MyFarms />;
       case 'disease-detection': return <DiseaseDetection />;
       case 'weather-intel':    return <WeatherIntel />;
       case 'alerts':           return <Alerts />;

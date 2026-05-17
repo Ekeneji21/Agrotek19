@@ -135,11 +135,26 @@ export function initDb() {
       plan_json TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS consultations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      agronomist_id TEXT NOT NULL REFERENCES agronomists(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      ai_reply TEXT DEFAULT '',
+      reply_at TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Add new columns to existing tables if upgrading
   try { db.exec(`ALTER TABLE agronomists ADD COLUMN phone TEXT DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE agronomists ADD COLUMN whatsapp TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE agronomists ADD COLUMN email TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE consultations ADD COLUMN ai_reply TEXT DEFAULT ''`); } catch {}
+  try { db.exec(`ALTER TABLE consultations ADD COLUMN reply_at TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE consultations ADD COLUMN status TEXT DEFAULT 'pending'`); } catch {}
 
   seedData();
 }
@@ -147,38 +162,32 @@ export function initDb() {
 function seedData() {
   const agCount = db.prepare('SELECT COUNT(*) as c FROM agronomists').get() as { c: number };
   if (agCount.c > 0) {
-    // Update existing agronomists with phone/whatsapp if missing
-    db.prepare(`UPDATE agronomists SET phone='+263 77 234 5610', whatsapp='263772345610' WHERE id='ag-1' AND phone=''`).run();
-    db.prepare(`UPDATE agronomists SET phone='+263 78 456 7821', whatsapp='263784567821' WHERE id='ag-2' AND phone=''`).run();
-    db.prepare(`UPDATE agronomists SET phone='+263 71 678 9032', whatsapp='263716789032' WHERE id='ag-3' AND phone=''`).run();
-    db.prepare(`UPDATE agronomists SET phone='+263 77 890 1243', whatsapp='263778901243' WHERE id='ag-4' AND phone=''`).run();
+    // Patch email onto existing records
+    db.prepare(`UPDATE agronomists SET email='desmondkwaramba1@gmail.com' WHERE id='ag-1' AND (email IS NULL OR email='')`).run();
+    db.prepare(`UPDATE agronomists SET email='desmondkwaramba1@gmail.com' WHERE id='ag-2' AND (email IS NULL OR email='')`).run();
+    db.prepare(`UPDATE agronomists SET email='desmondkwaramba1@gmail.com' WHERE id='ag-3' AND (email IS NULL OR email='')`).run();
+    db.prepare(`UPDATE agronomists SET email='desmondkwaramba1@gmail.com' WHERE id='ag-4' AND (email IS NULL OR email='')`).run();
     return;
   }
 
   const insertAg = db.prepare(`
-    INSERT INTO agronomists (id, name, specialty, location, rating, review_count, available, bio, phone, whatsapp)
+    INSERT INTO agronomists (id, name, specialty, location, rating, review_count, available, bio, phone, email)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const agronomists = [
     ['ag-1', 'Dr. Tapiwa Moyo', 'Cereal Crops & Disease Management', 'Harare', 4.9, 128, 1,
       'PhD in Plant Pathology from UZ. 15+ years in maize and sorghum disease management across Zimbabwe.',
-      '+263 77 234 5610', '263772345610'],
+      '+263 77 234 5610', 'desmondkwaramba1@gmail.com'],
     ['ag-2', 'Dr. Chiedza Ndlovu', 'Cotton & Tobacco Specialist', 'Bulawayo', 4.7, 95, 1,
       'Specialist in cash crop production and integrated pest management for cotton and tobacco.',
-      '+263 78 456 7821', '263784567821'],
-    ['ag-3', 'Eng. Blessing Mufara', 'Irrigation & Soil Health', 'Mutare', 4.8, 76, 0,
-      'Agricultural Engineer with expertise in drip/sprinkler systems and soil fertility programs.',
-      '+263 71 678 9032', '263716789032'],
-    ['ag-4', 'Dr. Rutendo Zimba', 'Horticulture & Vegetable Crops', 'Gweru', 4.6, 61, 1,
-      'Specialist in commercial vegetable production, greenhouse management, and export-quality standards.',
-      '+263 77 890 1243', '263778901243'],
-    ['ag-5', 'Mr. Farai Chikwanda', 'Smallholder Farming & Subsidies', 'Masvingo', 4.5, 44, 1,
-      'Extension officer with 10+ years helping smallholder farmers access government subsidy programs.',
-      '+263 78 012 3454', '263780123454'],
-    ['ag-6', 'Dr. Nyasha Dube', 'Livestock & Mixed Farming', 'Gwanda', 4.8, 83, 1,
-      'Veterinarian and agronomist specialising in integrated crop-livestock systems for semi-arid regions.',
-      '+263 71 234 5665', '263712345665'],
+      '+263 78 456 7821', 'desmondkwaramba1@gmail.com'],
+    ['ag-3', 'Eng. Blessing Mufara', 'Irrigation & Soil Health', 'Mutare', 4.8, 76, 1,
+      'Agricultural Engineer with expertise in drip/sprinkler irrigation systems and soil fertility programs.',
+      '+263 71 678 9032', 'desmondkwaramba1@gmail.com'],
+    ['ag-4', 'Dr. Rutendo Zimba', 'Horticulture & Smallholder Farming', 'Gweru', 4.6, 61, 1,
+      'Specialist in commercial vegetable production and Pfumvudza conservation agriculture for smallholders.',
+      '+263 77 890 1243', 'desmondkwaramba1@gmail.com'],
   ];
 
   const insertTip = db.prepare(`

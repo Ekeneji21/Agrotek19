@@ -67,6 +67,8 @@ export interface Agronomist {
   available: number;
   avatar_url: string | null;
   bio: string;
+  phone: string;
+  email: string;
 }
 
 export interface AdvisoryTip {

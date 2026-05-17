@@ -114,7 +114,7 @@ export const marketApi = {
 
 export const chatApi = {
   send: (message: string, history: { role: string; content: string }[]) =>
-    request<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+    request<{ reply: string; marketplaceItems: any[] }>('/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
 };
 
 export const transactionsApi = {
