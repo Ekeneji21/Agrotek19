@@ -125,6 +125,16 @@ export function initDb() {
       transaction_date TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS farm_plans (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      crop TEXT NOT NULL,
+      location TEXT NOT NULL,
+      quantity TEXT NOT NULL,
+      plan_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Add new columns to existing tables if upgrading

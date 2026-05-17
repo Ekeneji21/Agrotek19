@@ -14,6 +14,7 @@ import { Advisory } from './pages/Advisory';
 import { Marketplace } from './pages/Marketplace';
 import { Settings } from './pages/Settings';
 import { Finances } from './pages/Finances';
+import { FarmPlanner } from './pages/FarmPlanner';
 import { Loader2 } from 'lucide-react';
 
 function AppShell() {
@@ -48,6 +49,7 @@ function AppShell() {
       case 'advisory':         return <Advisory />;
       case 'marketplace':      return <Marketplace />;
       case 'finances':         return <Finances />;
+      case 'planner':          return <FarmPlanner />;
       case 'settings':         return <Settings />;
       default:                 return <Dashboard />;
     }

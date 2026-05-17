@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Tractor, Activity, CloudSun,
-  AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign
+  AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign, Sprout
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { alertsApi } from '../services/api';
@@ -33,6 +33,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
   const mainNav = [
     { id: 'dashboard',        label: 'Dashboard',         icon: LayoutDashboard },
+    { id: 'planner',          label: 'Farm Planner',      icon: Sprout, badge: 'AI' },
     { id: 'my-farms',         label: 'My Farms',          icon: Tractor },
     { id: 'disease-detection', label: 'Disease Detection', icon: Activity, badge: 'AI' },
     { id: 'weather-intel',    label: 'Weather Intel',     icon: CloudSun },

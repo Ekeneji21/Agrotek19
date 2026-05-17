@@ -99,6 +99,14 @@ export const analyticsApi = {
   getDiseaseTrends: () => request<any[]>('/analytics/disease-trends'),
 };
 
+export const plannerApi = {
+  generate: (data: { crop: string; quantity: string; unit: string; district: string }) =>
+    request<any>('/planner/generate', { method: 'POST', body: JSON.stringify(data) }),
+  getSaved: () => request<any[]>('/planner/saved'),
+  getSavedById: (id: string) => request<any>(`/planner/saved/${id}`),
+  deleteSaved: (id: string) => request<void>(`/planner/saved/${id}`, { method: 'DELETE' }),
+};
+
 export const transactionsApi = {
   list: () => request<any[]>('/transactions'),
   summary: () => request<any>('/transactions/summary'),

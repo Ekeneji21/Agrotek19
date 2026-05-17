@@ -14,6 +14,7 @@ import advisoryRoutes from './routes/advisory';
 import marketplaceRoutes from './routes/marketplace';
 import analyticsRoutes from './routes/analytics';
 import transactionsRoutes from './routes/transactions';
+import plannerRoutes from './routes/planner';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -33,6 +34,7 @@ app.use('/api/advisory', advisoryRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/transactions', transactionsRoutes);
+app.use('/api/planner', plannerRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
