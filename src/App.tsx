@@ -13,6 +13,7 @@ import { Alerts } from './pages/Alerts';
 import { Advisory } from './pages/Advisory';
 import { Marketplace } from './pages/Marketplace';
 import { Settings } from './pages/Settings';
+import { Finances } from './pages/Finances';
 import { Loader2 } from 'lucide-react';
 
 function AppShell() {
@@ -46,6 +47,7 @@ function AppShell() {
       case 'alerts':           return <Alerts />;
       case 'advisory':         return <Advisory />;
       case 'marketplace':      return <Marketplace />;
+      case 'finances':         return <Finances />;
       case 'settings':         return <Settings />;
       default:                 return <Dashboard />;
     }

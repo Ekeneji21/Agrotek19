@@ -96,6 +96,12 @@ export const marketplaceApi = {
 export const analyticsApi = {
   getCropHealth: () => request<any[]>('/analytics/crop-health'),
   getDiseaseOutbreaks: () => request<any>('/analytics/outbreaks'),
-  getFinancialImpact: () => request<any>('/analytics/financial'),
   getDiseaseTrends: () => request<any[]>('/analytics/disease-trends'),
+};
+
+export const transactionsApi = {
+  list: () => request<any[]>('/transactions'),
+  summary: () => request<any>('/transactions/summary'),
+  create: (data: any) => request<any>('/transactions', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: string) => request<void>(`/transactions/${id}`, { method: 'DELETE' }),
 };

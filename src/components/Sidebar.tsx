@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Tractor, Activity, CloudSun,
-  AlertTriangle, BookOpen, Store, Settings, X, LogOut
+  AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { alertsApi } from '../services/api';
@@ -41,6 +41,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarP
 
   const secondaryNav = [
     { id: 'advisory',    label: 'Advisory',    icon: BookOpen },
+    { id: 'finances',    label: 'Finances',    icon: DollarSign },
     { id: 'marketplace', label: 'Marketplace', icon: Store },
   ];
 

@@ -39,22 +39,19 @@ export function Dashboard() {
   const [weather, setWeather] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
   const [trends, setTrends] = useState<any[]>([]);
-  const [financial, setFinancial] = useState<any>(null);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [healthRes, trendsRes, financialRes, historyRes] = await Promise.all([
+        const [healthRes, trendsRes, historyRes] = await Promise.all([
           analyticsApi.getCropHealth(),
           analyticsApi.getDiseaseTrends(),
-          analyticsApi.getFinancialImpact(),
           diseaseApi.getHistory(),
         ]);
         setCropHealth(healthRes.data);
         setTrends(trendsRes.data);
-        setFinancial(financialRes.data);
         setScanHistory(historyRes.data.slice(0, 3));
       } catch {/* handled per-section */}
 
@@ -257,43 +254,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Financial Impact */}
-        <div className="col-span-12 card animate-fade-in" style={{ animationDelay: '0.25s' }}>
-          <div className="card-header">
-            <h2 className="card-title">Financial Impact Estimate</h2>
-            <button className="btn-icon"><MoreHorizontal size={18} /></button>
-          </div>
-          {loading ? (
-            <div className="flex justify-center py-6"><Loader2 size={28} className="animate-spin text-muted" /></div>
-          ) : financial && financial.estimatedRevenueUsd > 0 ? (
-            <div className="flex gap-6 justify-center" style={{ flexWrap: 'wrap' }}>
-              {[
-                { label: 'Est. Revenue', value: `$${financial.estimatedRevenueUsd.toLocaleString()}`, pct: financial.yieldHealthPct, color: 'var(--primary-green)' },
-                { label: 'Est. Cost', value: `$${financial.estimatedCostUsd.toLocaleString()}`, pct: 80, color: '#ef4444' },
-                { label: 'Est. ROI', value: `${financial.roiPct}%`, pct: Math.min(financial.roiPct, 100), color: 'var(--info-blue)' },
-              ].map((m, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <div style={{ width: 1, background: 'var(--border-color)' }} />}
-                  <div className="text-center flex flex-col items-center" style={{ minWidth: 140 }}>
-                    <div className="text-sm font-semibold text-muted mb-1">{m.label}</div>
-                    <div className="text-xl font-bold mb-3" style={{ color: m.color }}>{m.value}</div>
-                    <div className="progress-ring">
-                      <svg width="80" height="80" className="progress-circle">
-                        <circle cx="40" cy="40" r="34" className="progress-circle-bg" strokeWidth="6" />
-                        <circle cx="40" cy="40" r="34" strokeWidth="6" stroke={m.color} fill="none" strokeLinecap="round"
-                          style={{ strokeDasharray: 213.6, strokeDashoffset: 213.6 * (1 - m.pct / 100), transform: 'rotate(-90deg)', transformOrigin: 'center', transition: 'stroke-dashoffset 1s ease' }} />
-                      </svg>
-                      <div className="progress-text"><div className="text-lg font-bold">{m.pct}%</div></div>
-                    </div>
-                    <span className="badge badge-green mt-2"><ArrowUpRight size={10} /> Live</span>
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted text-center py-4">Add farms to see financial estimates.</p>
-          )}
-        </div>
       </div>
     </div>
   );
