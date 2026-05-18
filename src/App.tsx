@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/Toast';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Login } from './pages/Login';
@@ -70,7 +71,7 @@ function AppShell() {
           isDarkMode={isDarkMode}
           toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
-        <div className="dashboard-content">
+        <div className="dashboard-content page-enter">
           {renderContent()}
         </div>
       </main>
@@ -81,8 +82,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

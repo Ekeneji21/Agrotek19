@@ -538,10 +538,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
-  padding: 1.5rem;
-  position: relative;
-  overflow: hidden;
+  background: var(--bg-color);
 }
 
 .auth-bg-pattern {
@@ -554,16 +551,13 @@
 }
 
 .auth-card {
-  background: var(--card-bg, #fff);
-  border: 1px solid rgba(46,125,50,0.12);
-  border-radius: 1.25rem;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
   padding: 2.5rem;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 4px 16px rgba(46,125,50,0.08);
-  position: relative;
-  z-index: 1;
-  animation: slideUp 0.25s ease-out;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
 }
 
 .auth-card-wide { max-width: 600px; }
