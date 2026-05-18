@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sprout, MapPin, Loader2, ChevronRight, AlertTriangle,
-  DollarSign, TrendingUp, Calendar, Package, Trash2, BookOpen, MessageCircle
+  DollarSign, TrendingUp, Calendar, Package, Trash2, BookOpen, MessageCircle, CheckCircle
 } from 'lucide-react';
-import { plannerApi } from '../services/api';
+import { plannerApi, transactionsApi } from '../services/api';
+import { useToast } from '../components/Toast';
 
 const CROPS = [
   'Tobacco', 'Maize', 'Cotton', 'Soybean', 'Wheat', 'Sorghum', 'Groundnut',
@@ -25,7 +26,7 @@ const PHASE_COLORS = [
   '#16a34a', '#0284c7', '#d97706', '#9333ea', '#dc2626', '#0891b2',
 ];
 
-function PlanView({ plan, onBack: _onBack }: { plan: any; onBack: () => void }) {
+function PlanView({ plan, onBack: _onBack, onAddBudget }: { plan: any; onBack: () => void; onAddBudget?: (plan: any) => void }) {
   const whatsappText = encodeURIComponent(
     `Hi, I need advice on my ${plan.crop} crop in ${plan.location}.\n\nMy farm plan:\n- Quantity: ${plan.quantity_summary}\n- Planting window: ${plan.planting_window}\n- Expected yield: ${plan.yield?.expected} ${plan.yield?.unit}\n- Total budget needed: $${plan.costs?.total_usd}\n\nCan you assist?`
   );
@@ -218,19 +219,50 @@ function PlanView({ plan, onBack: _onBack }: { plan: any; onBack: () => void }) 
           >
             <MessageCircle size={16} /> Share Plan with Agronomist
           </a>
+
+          {/* Log budget to Finances */}
+          {onAddBudget && (
+            <button
+              className="btn btn-outline w-full"
+              style={{ borderColor: 'var(--primary-green)', color: 'var(--primary-green)' }}
+              onClick={() => onAddBudget(plan)}
+            >
+              <DollarSign size={16} /> Log Budget to Finances
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-export function FarmPlanner() {
-  const [form, setForm] = useState({ crop: 'Tobacco', quantity: '', unit: 'plants', district: 'Mazowe' });
+interface PlannerProps {
+  profile?: { crops: string[]; region: string; size: string } | null;
+  setActiveTab?: (tab: string) => void;
+}
+
+const REGION_TO_DISTRICT: Record<string, string> = {
+  'Harare / Mashonaland': 'Harare',
+  'Bulawayo / Matabeleland': 'Bulawayo',
+  'Mutare / Manicaland': 'Mutare',
+  'Gweru / Midlands': 'Gweru',
+  'Masvingo': 'Masvingo',
+  'Chinhoyi / Mashonaland West': 'Chinhoyi',
+  'Bindura / Mashonaland Central': 'Bindura',
+};
+
+export function FarmPlanner({ profile, setActiveTab: _setActiveTab }: PlannerProps) {
+  const defaultCrop = profile?.crops?.[0] ?? 'Tobacco';
+  const defaultDistrict = profile?.region ? (REGION_TO_DISTRICT[profile.region] ?? 'Mazowe') : 'Mazowe';
+  const { success, error: toastError } = useToast();
+
+  const [form, setForm] = useState({ crop: defaultCrop, quantity: '', unit: 'plants', district: defaultDistrict });
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [savedPlans, setSavedPlans] = useState<any[]>([]);
   const [savedLoading, setSavedLoading] = useState(true);
   const [error, setError] = useState('');
+  const [budgetLogged, setBudgetLogged] = useState(false);
 
   useEffect(() => {
     plannerApi.getSaved()
@@ -270,6 +302,47 @@ export function FarmPlanner() {
     if (plan?.id === id) setPlan(null);
   };
 
+  const generateFromProfile = () => {
+    if (!profile) return;
+    const profileForm = {
+      crop: profile.crops?.[0] ?? defaultCrop,
+      quantity: profile.size === 'Under 1 ha' ? '2000' : profile.size === '1–5 ha' ? '10000' : profile.size === '5–20 ha' ? '40000' : '100000',
+      unit: 'plants',
+      district: defaultDistrict,
+    };
+    setForm(profileForm);
+    // Auto-submit
+    if (!profileForm.quantity) return;
+    setError('');
+    setLoading(true);
+    setPlan(null);
+    plannerApi.generate(profileForm)
+      .then(res => {
+        setPlan(res.data);
+        plannerApi.getSaved().then(r => setSavedPlans(r.data)).catch(() => {});
+      })
+      .catch((err: any) => setError(err.message || 'Failed to generate plan.'))
+      .finally(() => setLoading(false));
+  };
+
+  const handleAddBudget = async (p: any) => {
+    if (budgetLogged) return;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await transactionsApi.create({
+        type: 'expense',
+        category: 'Seeds',
+        amount_usd: p.costs?.total_usd ?? 0,
+        description: `Farm plan budget: ${p.crop} in ${p.location}`,
+        transaction_date: today,
+      });
+      setBudgetLogged(true);
+      success(`$${p.costs?.total_usd?.toLocaleString()} budget logged to Finances`);
+    } catch {
+      toastError('Failed to log budget. Please try again.');
+    }
+  };
+
   if (plan) {
     return (
       <div className="page-container">
@@ -278,9 +351,16 @@ export function FarmPlanner() {
             <h1 className="page-title" style={{ marginBottom: 0 }}>Farm Planner</h1>
             <p className="text-sm text-muted mt-1">AI-generated plan for {plan.crop} in {plan.location}</p>
           </div>
-          <button className="btn btn-outline" onClick={() => setPlan(null)}>← New Plan</button>
+          <div className="flex gap-2">
+            {budgetLogged && (
+              <span className="badge badge-green" style={{ alignSelf: 'center' }}>
+                <CheckCircle size={12} /> Budget Logged
+              </span>
+            )}
+            <button className="btn btn-outline" onClick={() => { setPlan(null); setBudgetLogged(false); }}>← New Plan</button>
+          </div>
         </div>
-        <PlanView plan={plan} onBack={() => setPlan(null)} />
+        <PlanView plan={plan} onBack={() => setPlan(null)} onAddBudget={budgetLogged ? undefined : handleAddBudget} />
       </div>
     );
   }
@@ -299,6 +379,18 @@ export function FarmPlanner() {
         <div className="col-span-5 card animate-fade-in">
           <h2 className="card-title mb-1">What do you want to grow?</h2>
           <p className="text-xs text-muted mb-4">The AI will calculate everything — inputs, costs, timeline, and expected profit.</p>
+
+          {profile && (
+            <button
+              type="button"
+              className="btn btn-outline w-full mb-2"
+              style={{ borderColor: 'var(--primary-green)', color: 'var(--primary-green)', fontWeight: 700 }}
+              onClick={generateFromProfile}
+              disabled={loading}
+            >
+              <Sprout size={16} /> Generate from My Profile ({profile.crops?.[0]}, {profile.size})
+            </button>
+          )}
 
           <form onSubmit={generate} className="flex flex-col gap-4">
             {error && <p className="text-sm text-danger">{error}</p>}

@@ -60,7 +60,7 @@ function AppShell() {
       case 'consultations':    return <Consultations />;
       case 'marketplace':      return <Marketplace />;
       case 'finances':         return <Finances />;
-      case 'planner':          return <FarmPlanner />;
+      case 'planner':          return <FarmPlanner profile={profile} setActiveTab={setActiveTab} />;
       case 'settings':         return <Settings />;
       default:                 return <Dashboard profile={profile} setActiveTab={setActiveTab} />;
     }
