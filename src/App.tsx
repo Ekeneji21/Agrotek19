@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -18,6 +18,7 @@ import { Finances } from './pages/Finances';
 import { FarmPlanner } from './pages/FarmPlanner';
 import { Loader2 } from 'lucide-react';
 import { AgroChat } from './components/AgroChat';
+import { Onboarding } from './components/Onboarding';
 
 function AppShell() {
   const { user, loading } = useAuth();
@@ -25,6 +26,14 @@ function AppShell() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [profile, setProfile] = useState<any>(() => {
+    try { return JSON.parse(localStorage.getItem('agrisense_profile') || 'null'); } catch { return null; }
+  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (user && !profile) setShowOnboarding(true);
+  }, [user, profile]);
 
   if (loading) {
     return (
@@ -43,8 +52,8 @@ function AppShell() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':        return <Dashboard />;
-      case 'disease-detection': return <DiseaseDetection />;
+      case 'dashboard':        return <Dashboard profile={profile} setActiveTab={setActiveTab} />;
+      case 'disease-detection': return <DiseaseDetection setActiveTab={setActiveTab} />;
       case 'weather-intel':    return <WeatherIntel />;
       case 'alerts':           return <Alerts />;
       case 'advisory':         return <Advisory />;
@@ -53,7 +62,7 @@ function AppShell() {
       case 'finances':         return <Finances />;
       case 'planner':          return <FarmPlanner />;
       case 'settings':         return <Settings />;
-      default:                 return <Dashboard />;
+      default:                 return <Dashboard profile={profile} setActiveTab={setActiveTab} />;
     }
   };
 
@@ -76,6 +85,9 @@ function AppShell() {
         </div>
       </main>
       <AgroChat />
+      {showOnboarding && (
+        <Onboarding onDone={(p) => { setProfile(p); setShowOnboarding(false); }} />
+      )}
     </div>
   );
 }

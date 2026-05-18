@@ -16,7 +16,9 @@ interface ScanResult {
   scanned_at: string;
 }
 
-export function DiseaseDetection() {
+interface Props { setActiveTab: (tab: string) => void; }
+
+export function DiseaseDetection({ setActiveTab }: Props) {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -200,6 +202,22 @@ export function DiseaseDetection() {
                     <p className="text-sm" style={{ lineHeight: 1.7 }}>{result.treatment}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Post-diagnosis actions */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                <button onClick={() => setActiveTab('marketplace')} style={{ flex: 1, minWidth: 140, padding: '0.75rem', background: 'var(--light-green)', border: '1.5px solid var(--primary-green)', borderRadius: 10, color: 'var(--primary-green)', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  🛒 Buy Treatment
+                </button>
+                <button onClick={() => setActiveTab('consultations')} style={{ flex: 1, minWidth: 140, padding: '0.75rem', background: '#f0f9ff', border: '1.5px solid var(--info-blue)', borderRadius: 10, color: 'var(--info-blue)', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  💬 Ask Expert
+                </button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`My ${result.crop} crop has been diagnosed with ${result.disease} (${result.confidence}% confidence, ${result.severity} severity).\n\nRecommended treatment:\n${result.treatment}\n\nDiagnosed by AgriSense Zimbabwe AI`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ flex: 1, minWidth: 140, padding: '0.75rem', background: '#f0fdf4', border: '1.5px solid #22c55e', borderRadius: 10, color: '#16a34a', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                  📱 Share on WhatsApp
+                </a>
               </div>
             </div>
           )}
