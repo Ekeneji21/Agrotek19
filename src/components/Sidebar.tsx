@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Activity, CloudSun,
   AlertTriangle, BookOpen, Store, Settings, X, LogOut, DollarSign, Sprout, MessageCircle

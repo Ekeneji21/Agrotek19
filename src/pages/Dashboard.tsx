@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CloudRain, Cloud, Sun as SunIcon, ShieldAlert, Leaf, TrendingUp,
   TrendingDown, Loader2, Bug, Bell, DollarSign, MessageCircle, Zap, BarChart3
@@ -25,7 +25,6 @@ export function Dashboard() {
   const [finances, setFinances] = useState<any>(null);
   const [consultations, setConsultations] = useState<any[]>([]);
   const [prices, setPrices] = useState<any[]>([]);
-  const [trends, setTrends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +43,7 @@ export function Dashboard() {
         setFinances(finRes.data);
         setConsultations(consRes.data.slice(0, 3));
         setPrices(priceRes.data.prices?.slice(0, 5) ?? []);
-        setTrends(trendRes.data);
+        void trendRes;
       } catch {/* per-section fallback */}
 
       try {

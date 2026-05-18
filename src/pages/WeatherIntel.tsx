@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CloudRain, Cloud, Sun, Wind, Droplets, Thermometer, Eye, ArrowDown, ArrowUp, Loader2, MapPin } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { weatherApi } from '../services/api';
@@ -15,7 +15,7 @@ export function WeatherIntel() {
   const [loading, setLoading] = useState(true);
   const [locationName, setLocationName] = useState('');
   const [error, setError] = useState('');
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [_coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const loadWeather = async (lat: number, lng: number) => {
     setLoading(true);

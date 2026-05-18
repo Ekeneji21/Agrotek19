@@ -25,7 +25,7 @@ const PHASE_COLORS = [
   '#16a34a', '#0284c7', '#d97706', '#9333ea', '#dc2626', '#0891b2',
 ];
 
-function PlanView({ plan, onBack }: { plan: any; onBack: () => void }) {
+function PlanView({ plan, onBack: _onBack }: { plan: any; onBack: () => void }) {
   const whatsappText = encodeURIComponent(
     `Hi, I need advice on my ${plan.crop} crop in ${plan.location}.\n\nMy farm plan:\n- Quantity: ${plan.quantity_summary}\n- Planting window: ${plan.planting_window}\n- Expected yield: ${plan.yield?.expected} ${plan.yield?.unit}\n- Total budget needed: $${plan.costs?.total_usd}\n\nCan you assist?`
   );

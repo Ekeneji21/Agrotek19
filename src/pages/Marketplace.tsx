@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, ShoppingCart, Star, Package, Loader2, X, Plus, Minus, CheckCircle } from 'lucide-react';
 import { marketplaceApi } from '../services/api';
 

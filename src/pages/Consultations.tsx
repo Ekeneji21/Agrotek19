@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, Loader2, Clock, CheckCircle, Bot, User, Leaf } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Loader2, Clock, CheckCircle, Bot, User, Leaf } from 'lucide-react';
 import { advisoryApi } from '../services/api';
 
 export function Consultations() {

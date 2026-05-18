@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Star, Award, Users, MessageCircle, Loader2 } from 'lucide-react';
 import { advisoryApi } from '../services/api';
 
