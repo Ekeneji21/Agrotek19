@@ -39,7 +39,7 @@ async function detectWithGroq(imagePath: string): Promise<DetectionResult> {
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
   const response = await groq.chat.completions.create({
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    model: 'llama-3.2-11b-vision-preview',
     messages: [{
       role: 'user',
       content: [
